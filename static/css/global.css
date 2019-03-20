@@ -1,0 +1,139 @@
+
+/* CSS Document */
+/**	   
+  *		global仅放置基础全局公用样式
+  */
+@charset"utf-8";
+/* css reset */
+.wrapper { max-width: 750px;margin: 0 auto;min-height: 100%;overflow: hidden;}
+/*个人中心*/
+.detail-cont-top{
+	background: url(../images/beij.jpg)center no-repeat;
+	background-size: cover;
+	position: relative;
+	width: 100%;
+	height: 2.18rem;
+}
+.detail-cont-top-img {
+	top: 50%;
+	transform: translateY(-50%);
+	left: .2rem;
+	position: absolute;
+}
+.media_pic_1 {
+	position: relative;
+	display: block;
+	float: left;
+	width: 50px;
+	height: 50px;
+	border-radius: 50px;
+	overflow: hidden;
+	margin-left: .2rem;
+}
+.bg_cover {
+	display: block;
+	width: 100%;
+	background-size: cover;
+	background-position: center center;
+	background-repeat: no-repeat;
+}
+.detail-cont-top-text {
+	color: #fff;
+	top: 50%;
+	transform: translateY(-50%);
+	left:2rem;
+	position: absolute;
+	line-height: 1.8;
+}
+.classimg a{
+	width: 1.2rem;
+	height: 1.2rem;
+	display: block;
+	border: 1px solid #ddd;
+}
+.detail-cont-top-text>span {
+	font-size: .3rem;
+	letter-spacing: .02rem;
+}
+.detail-cont-top-text>P {
+	height: .4rem;
+	line-height: .4rem;
+}
+.detail-cont-details {
+	position: relative;
+	background: #fff;
+	color: #3366cc;
+	border: 1px solid #eee;
+}
+.detail-cont-block-number {
+	display: inline-block;
+	text-align: center;
+	width: calc(25% - 3px);
+	line-height: 1.8;
+}
+.detail-cont-block-number>span {
+	font-size: .32rem;
+	line-height: 1.8;
+	color: #333;
+}
+.detail-cont-block-number>p {
+	font-size: .24rem;
+	color: #999;
+}
+.per_item {
+	height: 1rem;
+	background: #fff;
+	text-align: left;
+	position: relative;
+	overflow: hidden;
+	display: flex;
+}
+.per_item p{
+	height: 1rem;
+	line-height: 1rem;
+	display: inline-block;
+	overflow: hidden;
+	font-size: .28rem;
+	color: #333;
+	box-sizing: border-box;
+	margin-left: .8rem;
+}
+.per_item_right {
+	overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    flex: 1;
+    text-align: right;
+}
+.per_item_left{
+	width: .16rem;
+	height: .28rem;
+	float: right;
+	display: block;
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	right: .2rem;
+}
+
+.per_item span{
+	height: 1rem;
+	line-height: 1rem;
+	font-size: .28rem;
+	color: #333;
+	padding-right: .3rem;
+}
+.per_item_img{
+	flex: 0 0 2.4rem;
+	width: 2.4rem;
+}
+.per_item_img>span{
+	margin-left: .7rem;
+}
+.per_item_img>img{
+	width: .32rem;
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: .2rem;
+}

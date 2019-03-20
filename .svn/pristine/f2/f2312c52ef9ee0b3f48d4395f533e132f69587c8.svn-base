@@ -1,0 +1,227 @@
+<template>
+	<div id="wxApp" class="wx-container">
+		<router-view v-if="isRouterAlive"></router-view>
+		<div v-if="dialog" class="page-field">
+			<div class="page-part">
+				<mt-field label="手机号" placeholder="请输入手机号" type="tel" v-model="pswForm.mobile"></mt-field>
+				<mt-field label="验证码" placeholder="请输入验证码" type="number" v-model="pswForm.code">
+					<mt-button type="default" size="small" :disabled="isGetCode" @click="getCode">{{ !isGetCode?'获取验证码':djTime+'秒' }}</mt-button>
+				</mt-field>
+			</div>
+			<mt-button size="large" type="primary" @click="confimbd">登录</mt-button>
+		</div>
+	</div>
+</template>
+
+<script>
+	import axios from 'axios';
+	import { Toast } from 'mint-ui';
+	export default {
+		provide(){
+			return {
+				reload:this.reload
+			}
+		},
+		data() {
+			return {
+				isRouterAlive:true,
+				djTime: 60,
+				pswForm: {
+					mobile: '',
+					code: ''
+				},
+				user: null,
+				isGetCode: false,
+				dialog: false,
+				wxcode: '',
+				url: '',
+				interval: ''
+			}
+		},
+		methods: {
+			// 页面重载
+			reload(){
+				this.isRouterAlive = false;
+				this.$nextTick(function(){
+					this.isRouterAlive = true;
+				})
+			},
+			//检查验证码是否正确
+			checkCode() {
+				axios.get('/vasms-web/validate2?mobile=' + this.pswForm.mobile + '&number=' + this.pswForm.code + '&code=' + this.wxcode)
+					.then((res) => {
+						if(res.data.result.code == 0) {
+							this.setAxios(res.data.data);
+							this.dialog = false;
+						} else {
+							Toast(res.data.result.desc);
+						}
+					});
+			},
+			//检查账户名是否存在
+			checkMoblie(callback) {
+				axios.get('/vasms-web/isExit?content=' + this.pswForm.mobile)
+					.then((res) => {
+						if(res.data.result.code == 0) {
+							callback();
+						} else {
+							Toast(res.data.result.desc);
+						}
+					});
+			},
+			confimbd() {
+				this.checkCode();
+			},
+			//获取企业微信公众号分配的code
+			getQueryString(name) {
+				var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+				var r = window.location.search.substr(1).match(reg);
+				if(r != null) return unescape(r[2]);
+				return null;
+			},
+			//获取手机验证码
+			getMobileCode() {
+				axios.get('/vasms-web/getSms?mobile=' + this.pswForm.mobile)
+					.then((res) => {
+						if(res.data.result.code == 0) {
+							Toast(res.data.data);
+						} else {
+							Toast(res.data.result.desc);
+						}
+					});
+			},
+			//获取验证码
+			getCode() {
+				this.checkMoblie(() => {
+					if(!this.isGetCode) {
+						this.interval = setInterval(() => {
+							if(this.djTime == 0) {
+								clearInterval(this.interval);
+								this.djTime = 60;
+								this.isGetCode = false;
+							} else {
+								this.djTime--;
+							}
+						}, 1000);
+						this.isGetCode = true;
+						this.getMobileCode();
+					}
+				});
+			},
+			setAxios(data) {				/* 记录用户所有信息*/
+				this.user = data;
+				/**存储用户信息**/
+				if(!sessionStorage.getItem('user')) sessionStorage.setItem('user', JSON.stringify(data));
+				if (window.location.hash.split('/')[1] != 'formProcessCorp') {
+					axios.defaults.headers.common['token'] = this.user == null ? '' : this.user.token;
+				}else{//外部报单页面
+					axios.defaults.headers.common['token'] = '0000';//手动设置token，外部报单页面
+				}
+				axios.defaults.headers.common['OS'] = 'WXGZH';
+				axios.defaults.timeout = 15000;
+				/*添加请求拦截器*/
+				axios.interceptors.request.use((config) => {
+					/*在发送请求之前做某事*/
+					return config;
+				}, (error) => {
+					Toast({
+						message: '请求失败,' + error,
+						iconClass: 'f35 iconfont icon-cha'
+					});
+					/*请求错误时做些事*/
+					return Promise.reject(error);
+				});
+				/*添加响应拦截器 如果token丢失提示用户重新登陆*/
+				axios.interceptors.response.use((response) => {
+					if(typeof response.data == "string") {
+						return response;
+					}
+					if(response.data.result.code != 0) {
+						Toast({
+							message: response.data.result.desc,
+							iconClass: 'f35 iconfont icon-cha'
+						});
+					}
+					if(response.data.result) {
+						if(response.data.result.code == 9001 && !response.data.data) {
+							Toast({
+								message: response.data.result.desc + ',请重新进入',
+								iconClass: 'f35 iconfont icon-cha'
+							});
+						}
+					}
+					return response;
+				}, (error) => {
+					Toast({
+						message: '响应失败,' + error,
+						iconClass: 'f35 iconfont icon-cha'
+					});
+					return Promise.reject(error);
+				});
+				if(this.url)
+					this.$router.replace(this.url);
+			}
+		},
+		/*当进入微信app端的时候判断是微信过来的用户还是 E车宝App*
+		 * 1.os=app E车宝   2.os=undefind 微信*/
+		created() {
+			if(this.getQueryString('os') == "app") {
+				let suser = sessionStorage.getItem('user'),
+				curtoken = this.getQueryString('token');
+				if(suser) {
+					if(suser.token == curtoken)
+					this.setAxios(JSON.parse(sessionStorage.getItem('user')));
+					return;
+				};
+				let para = {
+					token: curtoken
+				}
+				this.url = '/' + this.getQueryString('redirect_url');
+				//e车宝通过token获取用户信息
+				axios.get('/vasms-web/api/v1/sys/sysUserInfo/applogin', {
+					params: para
+				}).then((res) => {
+					if(res.data.result.code == 0) {
+						let data = res.data.data;
+						data.token = para.token;
+						this.setAxios(data);
+					} else {
+						Toast({
+							message: res.data.result.desc + ',请重新进入',
+							iconClass: 'f35 iconfont icon-cha'
+						});
+					}
+				});
+			} else {
+				let para = {
+					code: this.getQueryString('code')
+				};
+				this.url = '/' + this.getQueryString('state');
+				this.wxcode = this.getQueryString('code');
+				if(sessionStorage.getItem('user')) {
+					this.setAxios(JSON.parse(sessionStorage.getItem('user')));
+					return;
+				};
+				//微信企业公众号 登陆
+				axios.get('/vasms-web/getwechatpublic', {
+					params: para
+				}).then((res) => {
+					if(res.data.result.code == 4001) {
+						this.dialog = true;
+					}
+					if(res.data.result.code == 0) {
+						this.setAxios(res.data.data);
+					} else {
+						Toast({
+							message: res.data.result.desc,
+							iconClass: 'f35 iconfont icon-cha'
+						});
+					}
+				});
+			}
+		     // let user = '{"createdate":null,"createby":null,"updatedate":null,"updateby":null,"name":"ww0072","password":null,"usertype":null,"firstlogintime":null,"lastlogintime":null,"logincount":null,"isenable":null,"mobile":null,"token":"f3b88eca1014f009a5014e27be4a42de","androidtoken":null,"iostoken":null,"wechattoken":null,"qqtoken":null,"qqopenedid":null,"wechatopenedid":null,"wechatopenedid2":null,"corporateInfo":{"createdate":1493881632000,"createby":"6666","updatedate":1500825600000,"updateby":"6666","corpcode":"1","corpname":"万网公司","corpshortname":"WW","parentcorpcode":"0","corptype":"WW","isdelete":"0","isactive":null,"tel1":null,"tel2":null,"tel3":null,"corplevel":null,"corptypes":null,"address":null,"area":null,"source":null,"assignments":null,"businessrelation":null,"corporateinfos":null,"departmentInfo":null,"employees":null,"id":1},"departmentInfo":{"createdate":null,"createby":null,"updatedate":1503158400000,"updateby":"100062","deptcode":"58","deptname":"技术服务部","deptshortname":"jsfwb","parentdeptcode":"0","isenable":"1","corpid":1,"showorder":9,"deptmanagerid":69,"deptcontactno":"2690078","deptaddress":"黑龙江,齐齐哈尔,昂昂溪区","isactive":null,"isdelete":null,"groupInfo":null,"id":58},"employeeInfo":{"updatedate":1502467200000,"updateby":"6666","employeetype":"WW_CONTRACT","showorder":1188,"employeecode":"1188","employeename":"黄莉","employeenamepy":"hl","gender":"F","dateofbirth":637171200000,"positionid":303,"deptid":58,"userid":69,"superiorcode":"1137","mobile":"18780515621","email":"18780515621@cnzhjk.com","emplevel":"0","isenable":"1","headiconpath":"2017-06-22\\fa4b756c-28c4-4fcc-9c55-5813f5afbe6d.jpg","region":"四川,成都,高新区","id":69,"ID":69},"id":69}';
+		     // this.setAxios(JSON.parse(user));
+		     
+		}
+	}
+</script>
